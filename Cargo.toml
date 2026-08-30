@@ -1,0 +1,65 @@
+[package]
+name = "newtonian-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+description = "Configuration-indexed policy kernel: gated scores, exact sleeve ROM, and Newtonian program ports. Pair with newton-machine for typed modal truth."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/newtonian-core"
+homepage = "https://github.com/shan-alexander/newtonian-core"
+repository = "https://github.com/shan-alexander/newtonian-core"
+keywords = ["state-machine", "policy", "elm", "bdi", "no-std"]
+categories = ["data-structures", "no-std", "rust-patterns"]
+authors = ["Newtonian Program Contributors"]
+# GitHub-only: examples/, benches/, docs/ (rustbrain), .github/.
+# `cargo publish` will warn that examples are ignored; that is intended.
+include = [
+    "/src/**",
+    "/tests/**",
+    "/Cargo.toml",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE-MIT",
+    "/LICENSE-APACHE",
+    "/rustfmt.toml",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["std"]
+std = ["alloc", "newton-machine?/std"]
+alloc = ["serde?/alloc"]
+serde = ["dep:serde", "newton-machine?/serde"]
+machine = ["dep:newton-machine", "alloc"]
+fold = ["std", "serde", "dep:toml", "dep:serde_yaml"]
+
+[dependencies]
+serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
+newton-machine = { version = "0.2.1", optional = true, default-features = false, features = ["alloc"] }
+toml = { version = "0.8", optional = true }
+serde_yaml = { version = "0.9", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "step_entity"
+harness = false
+
+[[example]]
+name = "aapl_1m"
+required-features = ["machine"]
+
+[[example]]
+name = "mosquito"
+required-features = ["machine", "fold"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(docsrs)"] }
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"

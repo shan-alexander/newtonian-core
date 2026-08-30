@@ -1,0 +1,66 @@
+# Mosquito trap sleeves. Fold interned once; step never parses this.
+# Score/play *kinds* are Rust (Catalog). This file: sticky, exact chords, knobs.
+
+[scores.HighConf]
+sticky = 4
+
+[scores.OnTarget]
+sticky = 2
+enabled_by = ["HighConf"]
+
+[[sleeves]]
+when_exactly = ["Patrol"]
+play = "Scan"
+
+[[sleeves]]
+when_exactly = ["HighConf", "Patrol"]
+play = "Scan"
+
+[[sleeves]]
+when_exactly = ["HighConf", "OnTarget", "Patrol"]
+play = "Scan"
+
+[[sleeves]]
+when_exactly = ["Attract"]
+play = "LureCo2"
+
+[[sleeves]]
+when_exactly = ["HighConf", "Attract"]
+play = "LureViolet"
+
+[[sleeves]]
+when_exactly = ["HighConf", "OnTarget", "Attract"]
+play = "LureViolet"
+
+[[sleeves]]
+when_exactly = ["HighConf", "Track"]
+play = "Aim"
+
+[[sleeves]]
+when_exactly = ["HighConf", "OnTarget", "Track"]
+play = "Aim"
+
+[[sleeves]]
+when_exactly = ["HighConf", "OnTarget", "Engage"]
+play = "Fire"
+knobs = { power = 0.85 }
+
+[[sleeves]]
+when_exactly = ["HighConf", "Cooldown"]
+play = "Scan"
+
+[[sleeves]]
+when_exactly = ["HighConf", "OnTarget", "Cooldown"]
+play = "Scan"
+
+[[sleeves]]
+when_exactly = ["Halt"]
+play = "Scan"
+
+[[sleeves]]
+when_exactly = ["HighConf", "Halt"]
+play = "Scan"
+
+[[sleeves]]
+when_exactly = ["HighConf", "OnTarget", "Halt"]
+play = "Scan"
