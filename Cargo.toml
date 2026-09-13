@@ -1,6 +1,6 @@
 [package]
 name = "newtonian-core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.80"
 description = "Configuration-indexed policy kernel: gated scores, exact sleeve ROM, and Newtonian program ports. Pair with newton-machine for typed modal truth."

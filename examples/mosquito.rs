@@ -649,21 +649,20 @@ fn main() {
 
         let mode_before = *rt.machine();
         let rev = Revision::new(FactKey::Feat, prev_feat, Some(Fact::Feat(feat)));
-        let mut msg = match lift.lift(&beliefs, &rev, &mandate, &mode_before) {
-            Lifted::Msg(m) => Some(m),
-            Lifted::Silence => None,
-        };
+        let mut msgs = lift
+            .lift(&beliefs, &rev, &mandate, &mode_before)
+            .into_msgs();
         if mode_before == Mode::Cooldown {
             if let Some(left) = cool_left.as_mut() {
                 *left = left.saturating_sub(1);
                 if *left == 0 {
-                    msg = Some(Msg::CycleDone);
+                    msgs.push(Msg::CycleDone);
                     cool_left = None;
                 }
             }
         }
 
-        if let Some(m) = msg {
+        for m in msgs {
             let step = IntentionMachine::apply(&mut rt, m);
             if *rt.machine() != mode_before {
                 print_mode(t, mode_before, *rt.machine(), feat, &step.cmd);

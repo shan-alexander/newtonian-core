@@ -1,4 +1,4 @@
-//! Belief × mandate × configuration → `Msg` or silence.
+//! Belief × mandate × configuration → `Msg` or silence (or several `Msg`s).
 //!
 //! Lift is a thin production-rule layer. It is **not** the machine and it is
 //! **not** the Executive loop. Drools / OPS5 / Rete are proof that "when
@@ -14,17 +14,55 @@
 //! Signature: inspect **`now` plus a [`Revision`] of the fact that changed**.
 //! Do not clone the whole store to recover `previous`. Other keys are read
 //! from `now`; the changed key's prior payload is `revision.previous`.
-//! See [[docs/adr/0020-kernel-sits-beside-the-chart]].
+//! See [[docs/adr/0020-kernel-sits-beside-the-chart]]
+//! [[docs/adr/0021-batch-lift-max-age-disarm-port-executive]].
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 /// What lift may emit after inspecting a revision.
+///
+/// One pulse may have several category changes. Prefer [`Lifted::into_msgs`]
+/// over matching a single [`Lifted::Msg`]. Not `Copy` (`Batch` holds a `Vec`).
 #[must_use]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Lifted<Msg> {
-    /// Category change. The Executive will `apply` this.
-    Msg(Msg),
     /// Nothing decision-relevant happened. The store already has the new fact.
     Silence,
+    /// One category change. The Executive will `apply` this.
+    Msg(Msg),
+    /// Several category changes this pulse, in apply order.
+    #[cfg(feature = "alloc")]
+    Batch(Vec<Msg>),
+}
+
+impl<Msg> Lifted<Msg> {
+    /// True when this pulse is silent.
+    pub const fn is_silence(&self) -> bool {
+        matches!(self, Lifted::Silence)
+    }
+
+    /// Collapse 0 / 1 / many into a `Vec` for the Executive.
+    #[cfg(feature = "alloc")]
+    pub fn into_msgs(self) -> Vec<Msg> {
+        match self {
+            Lifted::Silence => Vec::new(),
+            Lifted::Msg(m) => alloc::vec![m],
+            Lifted::Batch(v) => v,
+        }
+    }
+
+    /// Build Silence / Msg / Batch from an iterator.
+    #[cfg(feature = "alloc")]
+    pub fn from_msgs(msgs: impl IntoIterator<Item = Msg>) -> Self {
+        let mut v: Vec<Msg> = msgs.into_iter().collect();
+        match v.len() {
+            0 => Lifted::Silence,
+            1 => Lifted::Msg(v.pop().expect("len 1")),
+            _ => Lifted::Batch(v),
+        }
+    }
 }
 
 /// One belief key that just changed.
@@ -56,7 +94,8 @@ impl<K, F> Revision<K, F> {
 /// The only door from beliefs to the chart.
 ///
 /// Implementations should be pure. No I/O. No `apply`. The Executive calls
-/// `lift` *after* `BeliefStore::revise` and *before* `IntentionMachine::apply`.
+/// `lift` *after* `BeliefStore::revise` and *before* `IntentionMachine::apply`
+/// (once per message in [`Lifted::Batch`]).
 /// [`crate::step_entity`] is a different door (policy ROM) and does not call
 /// `apply` either.
 pub trait Lift {
@@ -139,5 +178,14 @@ mod tests {
             lift.lift(&now10, &Revision::new((), Some(9), Some(10)), &(), &()),
             Lifted::Msg("stale")
         ));
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn batch_is_several_msgs_one_pulse() {
+        let b = Lifted::from_msgs(["setup", "arm", "fire"]);
+        assert_eq!(b.into_msgs(), ["setup", "arm", "fire"]);
+        assert!(Lifted::<u8>::from_msgs([]).is_silence());
+        assert!(matches!(Lifted::from_msgs([1]), Lifted::Msg(1)));
     }
 }

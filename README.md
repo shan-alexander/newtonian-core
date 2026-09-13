@@ -4,17 +4,17 @@
 [![crates.io](https://img.shields.io/crates/v/newtonian-core.svg)](https://crates.io/crates/newtonian-core)
 [![docs.rs](https://docs.rs/newtonian-core/badge.svg)](https://docs.rs/newtonian-core)
 
-**A configuration-indexed policy kernel.** Newton is UCA **truth**. This crate is gated scores → exact superstate key → compiled sleeve ROM → `Cmd`. The Executive (pulse) is still yours.
+**A configuration-indexed policy kernel.** Newton is UCA **truth**. This crate is gated scores → exact superstate key → compiled sleeve ROM → `Cmd`. The Executive (pulse) is still yours. 
 
-> Newton names what is true. The policy kernel names what to do. The host owns the clock (bar, frame, 10 ms sample) and the adapters (broker, motors, renderer).
+> Okay so here's the gist. Several scenarios in software engineering can call for a state machine and this `newtonian-core` crate intends to integrate with a state machine and provide ideal rust design patterns for implementing desired behaviors as a reaction to the current state, with some unique features like sticky-state lifetimes (the engineer can optionally define how long a state should persist in 'current state' even when raw state no longer has that state). Typically, the running application will have a current state, derived data that is generated from the current state, and intended behaviors to execute when certain states are true which are somewhat like triggers/listeners of state... ideally all data can be converted into scores and boolean gates. you define the scoring methodology and `newtonian-core` is giving you a lightweight approach to ideal rusty design patterns (or helping your AI Agent deliver scalable maintainable code rather than sloppy code sprawl). The `newton-machine` rust crate provides ideal rusty design patterns for a Mealy, Harel-like state machine -- in other words, an AI Agent using `newton-machine` is guardrailed into proper, performant architecture and will get helpful compiler errors if the code violates any principles of a state machine built on Unidirectional Configuration Architecture (UCA). The `newton-machine`  (or any state machine) names what is true, and the `newtonian-core` is the policy kernel that encodes what to do in a state (or overlapping states). The host (ie you) owns the clock (all Mealy machines rely on a synchronous clock, whether its OHLCV bars, gaming frames, 10 ms vision snapshots for robotics, etc) and the host (you) also owns the adapters (your external api, or data broker, robotics motors, frame renderer, etc). Additionally, `newtonian-core` provides an approach to using a YAML file to declaratively configure the behavioral values, so that you can modify/tune the behavior without having to recompile. 
 
-**Status:** `0.1.0` ships ports, the handwritten kernel (`Key`, exact `Table`, hysteretic scores, `step_entity`), Fold (feature `fold`), and the `newton-machine` adapter (feature `machine`). `0.x` is not SemVer-stable. `unsafe` is forbidden. `#![no_std]` + `alloc` is the default shape. See [ADR 0016](docs/adr/0016-newtonian-core-is-the-policy-kernel.md) and [ADR 0020](docs/adr/0020-kernel-sits-beside-the-chart.md).
+**Status:** `0.2.0` ships ports, the kernel (`Key`, exact `Table`, hysteretic scores, `max_age` / `disarm_mask`, `step_entity`), Fold (feature `fold`), `Lifted::Batch`, `PortExecutive`, and the `newton-machine` adapter (feature `machine`). `0.x` is not SemVer-stable. `unsafe` is forbidden. `#![no_std]` + `alloc` is the default shape. See [ADR 0016](docs/adr/0016-newtonian-core-is-the-policy-kernel.md) and [ADR 0020](docs/adr/0020-kernel-sits-beside-the-chart.md).
 
-**crates.io name:** **`newtonian-core`**. The name `newton-core` is taken (an unrelated zkVM SDK). This repo directory may stay `newton-core`. See [ADR 0001](docs/adr/0001-crate-identity-and-name-collision.md). We do **not** publish a third crate `newton-exec`: the pulse is the [`exec`](src/exec.rs) module. See [ADR 0015](docs/adr/0015-two-crates-exec-is-a-module.md).
+**crates.io name:** **`newtonian-core`**. The name `newton-core` is taken (an unrelated zkVM SDK). This github repo directory may stay `newton-core`. See [ADR 0001](docs/adr/0001-crate-identity-and-name-collision.md). We do **not** publish a third crate `newton-exec`: the pulse is the [`exec`](src/exec.rs) module. See [ADR 0015](docs/adr/0015-two-crates-exec-is-a-module.md).
 
-This crate is **not a trading library**. A live desk is one consumer of the same four kinds of state. A session protocol, a robot sequencer, a UI shell, a cluster operator, and a firmware mode manager are the same pattern.
+This crate could be used in a variety of scenarios: \a session protocol, a robot sequencer, a UI shell, a cluster operator, a quant trading desk, and a firmware mode manager -- they can all use the same pattern I provide in `newtonian-core` + `newton-machine`.
 
-## Start here (you have no context)
+## Start here
 
 You are looking at one of **two** published crates:
 
@@ -27,9 +27,9 @@ There is no `newton-exec` crate. The Executive is either **you** (a test, iced, 
 
 This crate is useful **without** `newton-machine` (impl `IntentionMachine` yourself) and **without** `exec` (bring your own pulse). `exec` is not useful without these ports. That is why it is a module.
 
-Sibling crate [`newton-machine`](https://github.com/shan-alexander/newton-machine) is the **intention** machine (Bratman / Rao & Georgeff). This crate does not re-implement charts.
+Sibling crate [`newton-machine`](https://github.com/shan-alexander/newton-machine) is the **intention** machine (Bratman / Rao & Georgeff). 
 
-Architecture graph: [rustbrain](https://docs.rs/rustbrain) under `docs/`. A new agent should run `rustbrain context "policy kernel"` then `rustbrain context "what is a newtonian program"` before editing. Seed note: [docs/concepts/policy-kernel.md](docs/concepts/policy-kernel.md).
+If you clone the repo to tinker with the crate, you can use the `rustbrain` CLI to learn a lot about the architecture: [rustbrain](https://docs.rs/rustbrain) under `docs/`. A new agent should run `rustbrain context "policy kernel"` then `rustbrain context "what is a newtonian program"` before editing. Seed note: [docs/concepts/policy-kernel.md](docs/concepts/policy-kernel.md).
 
 ## The five things a live program actually is
 
@@ -117,7 +117,7 @@ Keep the vocabulary stable so “Newton” does not mean five things.
 | Program | one Executive + one or more machines + one gateway |
 | Desk / robot / shell | a Program in a particular domain. Not a crate name |
 
-## What this crate ships at 0.1.0
+## What this crate ships at 0.2.0
 
 Traits, vocabulary, and a **handwritten** kernel. No sockets. No YAML interpreter. No YAML chart loader.
 
@@ -126,7 +126,8 @@ Traits, vocabulary, and a **handwritten** kernel. No sockets. No YAML interprete
 - `IntentionMachine` — ports `newton-machine::Runtime` (and any other UCA host) must present: `apply`, `view`, `snapshot`, `restore`, `in_state`. Feature `machine` impls it for `Runtime<M>`.
 - `BeliefStore` — revise, withdraw, read, freshness; `MemoryStore` behind `alloc`
 - `Mandate` — standing aims; typically a small immutable struct
-- `Lift` — category changes become messages; ticks do not (`now` + `Revision`)
+- `Lift` — category changes become messages (`Silence` / `Msg` / `Batch`); ticks do not
+- `PortExecutive` — named lift → apply → admit pulse; host still does I/O and kernel `step`
 - `Gateway` — admit / refuse `Cmd`; no I/O in the trait
 - `Skill` — named reflex the Executive may invoke; still data in, data out
 - `ProgramParts` — the composition type (handles, not the loop; kernel sits beside it)
@@ -168,7 +169,7 @@ The last rows are *examples*. They are not the crate. Same kernel: scores on a p
 
 ```toml
 [dependencies]
-newtonian-core = { version = "0.1", features = ["machine"] }
+newtonian-core = { version = "0.2", features = ["machine"] }
 newton-machine = "0.2"
 ```
 

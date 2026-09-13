@@ -227,12 +227,20 @@ impl<P: Clone> Catalog<P> {
                 .expect("catalog score");
             spec.period = raw.period.max(1);
             spec.sticky = raw.sticky;
+            spec.max_age = raw.max_age;
             spec.enable_mask = Key::EMPTY;
+            spec.disarm_mask = Key::EMPTY;
             for parent in &raw.enabled_by {
                 let pid = self
                     .score_id(parent)
                     .ok_or_else(|| FoldError::EnablementNotScore(parent.clone()))?;
                 spec.enable_mask = spec.enable_mask.union(Key::bit(pid));
+            }
+            for peer in &raw.disarm_when {
+                let pid = self
+                    .score_id(peer)
+                    .ok_or_else(|| FoldError::EnablementNotScore(peer.clone()))?;
+                spec.disarm_mask = spec.disarm_mask.union(Key::bit(pid));
             }
         }
 
@@ -386,7 +394,11 @@ struct RawScore {
     #[serde(default)]
     sticky: u16,
     #[serde(default)]
+    max_age: u16,
+    #[serde(default)]
     enabled_by: Vec<String>,
+    #[serde(default)]
+    disarm_when: Vec<String>,
 }
 
 fn default_period() -> u64 {
@@ -519,6 +531,24 @@ play = "Fire"
             Pulse::new(0),
         );
         assert!(step.sleeve.is_none());
+    }
+
+    #[test]
+    fn max_age_and_disarm_when_fold() {
+        let p = cat()
+            .fold_toml(
+                r#"
+[scores.HighConf]
+max_age = 8
+
+[scores.OnTarget]
+disarm_when = ["HighConf"]
+"#,
+            )
+            .unwrap();
+        let specs = p.specs();
+        assert_eq!(specs[0].max_age, 8);
+        assert_eq!(specs[1].disarm_mask, Key::bit(ScoreId::new(0)));
     }
 
     #[test]

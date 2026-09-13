@@ -114,6 +114,12 @@ impl Key {
         Self(self.0 & other.0)
     }
 
+    /// At least one shared bit. Disarm uses this (not the ROM matcher).
+    #[inline]
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+
     /// Bits in `self` and not in `other`.
     #[inline]
     pub const fn difference(self, other: Self) -> Self {

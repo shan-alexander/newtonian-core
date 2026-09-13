@@ -904,25 +904,25 @@ fn main() {
         let rev = Revision::new(FactKey::Snap, previous, Some(Fact::Snap(snap.clone())));
 
         let desk_before = *rt.machine();
-        match lift.lift(&beliefs, &rev, &mandate, &desk_before) {
-            Lifted::Msg(stance) => {
-                lift_msgs += 1;
-                let step = IntentionMachine::apply(&mut rt, stance);
-                if *rt.machine() != desk_before {
-                    chart_changes += 1;
-                    if chart_prints < 12 {
-                        print_chart(&desk_before, &rt, &step.cmd);
-                        chart_prints += 1;
-                    } else if chart_prints == 12 {
-                        println!("  … further chart edges omitted (see footer counts)\n");
-                        chart_prints += 1;
-                    }
-                }
-                for atom in step.cmd.iter().copied() {
-                    let _ = gateway.admit(Wire::Chart(atom), &mandate, &world);
+        for stance in lift
+            .lift(&beliefs, &rev, &mandate, &desk_before)
+            .into_msgs()
+        {
+            lift_msgs += 1;
+            let step = IntentionMachine::apply(&mut rt, stance);
+            if *rt.machine() != desk_before {
+                chart_changes += 1;
+                if chart_prints < 12 {
+                    print_chart(&desk_before, &rt, &step.cmd);
+                    chart_prints += 1;
+                } else if chart_prints == 12 {
+                    println!("  … further chart edges omitted (see footer counts)\n");
+                    chart_prints += 1;
                 }
             }
-            Lifted::Silence => {}
+            for atom in step.cmd.iter().copied() {
+                let _ = gateway.admit(Wire::Chart(atom), &mandate, &world);
+            }
         }
 
         let kstep = folded.step(

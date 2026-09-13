@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-30
+
+Breaking: `Lifted` is no longer `Copy`; one pulse can emit several `Msg`s.
+
+### Added
+
+- `Lifted::Batch` / `into_msgs` / `from_msgs` (`alloc`). One pulse may lift Setup+Arm+Fire without stuffing a `Vec` into `Msg`.
+- `ScoreSpec::max_age` (own-ticks, `0` = no cap) and `disarm_mask` (any already in-play score bit forces off). Fold: `max_age`, `disarm_when`.
+- `PortExecutive::pulse`: lift → apply each msg → admit each cmd. No I/O, no kernel, no `revise`.
+- ADR 0021.
+
+### Changed
+
+- `Lifted` dropped `Copy` so `Batch(Vec<M>)` can exist.
+
 ## [0.1.0] — 2026-08-30
 
 First crates.io release of the **policy kernel**. `0.x` is not SemVer-stable.
@@ -42,6 +57,7 @@ Unpublished seed (ontology freeze).
 - Cargo name `newton-core` → `newtonian-core` (crates.io `newton-core` is an unrelated zkVM SDK).
 - Family is two crates (`newton-machine` + `newtonian-core`), not three. See ADR 0015.
 
-[Unreleased]: https://github.com/shan-alexander/newtonian-core/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/shan-alexander/newtonian-core/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/shan-alexander/newtonian-core/releases/tag/0.2.0
 [0.1.0]: https://github.com/shan-alexander/newtonian-core/releases/tag/0.1.0
 [0.0.0]: https://github.com/shan-alexander/newtonian-core

@@ -25,7 +25,7 @@ Land `newtonian-core` as an honest `0.0.0` ports crate, then grow it into the **
 - [x] `step_entity` Criterion bench (kernel budget, not desk SLOs).
 - [x] Memory `BeliefStore` (`alloc`, `BTreeMap`).
 - [x] Adapter `impl IntentionMachine for newton_machine::Runtime<M>` (feature `machine`).
-- [ ] `exec` pulse helper, still no sockets. See [[docs/adr/0015-two-crates-exec-is-a-module]].
+- [x] `PortExecutive` pulse helper (lift → apply batch → admit). Still no sockets. See [[docs/adr/0021-batch-lift-max-age-disarm-port-executive]].
 - [x] GitHub examples: `aapl_1m` + `mosquito` (host Executive; feature `machine` adapter).
 - [ ] File-backed program snapshot *example* in a host, not in core.
 

@@ -11,7 +11,10 @@ use crate::kernel::key::{Key, Pulse, ScoreId, SCORE_WIDTH};
 /// New *kinds* are new specs (Rust). Numbers (period, sticky) are data.
 /// Enablement is score-on-score: `enable_mask` must be a subset of **earlier**
 /// specs (strictly increasing [`ScoreId`]). Parent off → this score is forced
-/// off this pulse (sticky discarded). No decay in this slice.
+/// off this pulse (sticky discarded).
+///
+/// [`ScoreSpec::max_age`] caps total in-play own-ticks. [`ScoreSpec::disarm_mask`]:
+/// any of those **already in-play** score bits force this score off.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ScoreSpec {
     /// Bit this score occupies. Must be `< SCORE_WIDTH`.
@@ -22,8 +25,13 @@ pub struct ScoreSpec {
     /// Own-clock ticks the bit stays in-play after raw becomes false.
     /// `0` means combinatorial (raw false → off this pulse).
     pub sticky: u16,
+    /// Max own-ticks in-play (rising pulse counts as 1). `0` = no cap.
+    pub max_age: u16,
     /// Parent bits that must already be in-play. [`Key::EMPTY`] = always enabled.
     pub enable_mask: Key,
+    /// If any of these score bits are already in-play this pulse, force off.
+    /// Same DAG as enablement: bits must have a lower [`ScoreId`].
+    pub disarm_mask: Key,
 }
 
 impl ScoreSpec {
@@ -33,7 +41,9 @@ impl ScoreSpec {
             id,
             period: 1,
             sticky: 0,
+            max_age: 0,
             enable_mask: Key::EMPTY,
+            disarm_mask: Key::EMPTY,
         }
     }
 
@@ -46,6 +56,24 @@ impl ScoreSpec {
     /// Extra own-ticks of hold after raw falls.
     pub const fn with_sticky(mut self, sticky: u16) -> Self {
         self.sticky = sticky;
+        self
+    }
+
+    /// Cap in-play own-ticks (including the rising pulse). `0` = no cap.
+    pub const fn with_max_age(mut self, max_age: u16) -> Self {
+        self.max_age = max_age;
+        self
+    }
+
+    /// Force off when `peer` is already in-play this pulse.
+    pub const fn disarmed_by(mut self, peer: ScoreId) -> Self {
+        self.disarm_mask = Key::bit(peer);
+        self
+    }
+
+    /// Force off when any bit of `mask` is already in-play this pulse.
+    pub const fn with_disarm_mask(mut self, mask: Key) -> Self {
+        self.disarm_mask = mask;
         self
     }
 
@@ -72,6 +100,7 @@ pub struct EntityState {
     last_key: Key,
     had_hit: bool,
     sticky_left: [u16; SCORE_WIDTH as usize],
+    live_ticks: [u16; SCORE_WIDTH as usize],
     last_period: [u64; SCORE_WIDTH as usize],
 }
 
@@ -89,6 +118,7 @@ impl EntityState {
             last_key: Key::EMPTY,
             had_hit: false,
             sticky_left: [0; SCORE_WIDTH as usize],
+            live_ticks: [0; SCORE_WIDTH as usize],
             last_period: [0; SCORE_WIDTH as usize],
         }
     }
@@ -135,6 +165,9 @@ pub fn specs_valid(specs: &[ScoreSpec]) -> bool {
         if !seen.contains(spec.enable_mask) {
             return false;
         }
+        if !seen.contains(spec.disarm_mask) {
+            return false;
+        }
         seen.set(spec.id);
     }
     true
@@ -161,17 +194,48 @@ pub fn eval_scores(specs: &[ScoreSpec], state: &mut EntityState, raw: Key, pulse
         let enabled = spec.enable_mask.is_empty() || in_play.contains(spec.enable_mask);
         if !enabled {
             state.sticky_left[i] = 0;
+            state.live_ticks[i] = 0;
             continue;
         }
 
+        if !spec.disarm_mask.is_empty() && in_play.intersects(spec.disarm_mask) {
+            state.sticky_left[i] = 0;
+            state.live_ticks[i] = 0;
+            continue;
+        }
+
+        let bump = |live: u16| -> u16 {
+            if live == 0 {
+                1
+            } else if delta > 0 {
+                live.saturating_add(core::cmp::min(delta, u64::from(u16::MAX)) as u16)
+            } else {
+                live
+            }
+        };
+
+        let mut on = false;
         if raw.has(spec.id) {
+            state.live_ticks[i] = bump(state.live_ticks[i]);
             state.sticky_left[i] = spec.sticky;
-            in_play.set(spec.id);
+            on = true;
         } else if state.sticky_left[i] > 0 {
-            in_play.set(spec.id);
+            state.live_ticks[i] = bump(state.live_ticks[i]);
             if delta > 0 {
                 let drop = core::cmp::min(delta, u64::from(state.sticky_left[i])) as u16;
                 state.sticky_left[i] -= drop;
+            }
+            on = true;
+        } else {
+            state.live_ticks[i] = 0;
+        }
+
+        if on {
+            if spec.max_age > 0 && state.live_ticks[i] > spec.max_age {
+                state.sticky_left[i] = 0;
+                state.live_ticks[i] = 0;
+            } else {
+                in_play.set(spec.id);
             }
         }
     }
@@ -205,5 +269,35 @@ mod tests {
     fn specs_reject_parent_after_child() {
         let bad = [ScoreSpec::new(B).enabled_by(A), ScoreSpec::new(A)];
         assert!(!specs_valid(&bad));
+    }
+
+    #[test]
+    fn max_age_caps_in_play_own_ticks() {
+        let specs = [ScoreSpec::new(A).with_max_age(2)];
+        let mut state = EntityState::new();
+        let raw = Key::bit(A);
+        assert_eq!(eval_scores(&specs, &mut state, raw, Pulse::new(0)), raw);
+        assert_eq!(eval_scores(&specs, &mut state, raw, Pulse::new(1)), raw);
+        assert!(
+            eval_scores(&specs, &mut state, raw, Pulse::new(2)).is_empty(),
+            "live_ticks 3 > max_age 2"
+        );
+    }
+
+    #[test]
+    fn disarm_mask_forces_off_when_peer_in_play() {
+        let specs = [
+            ScoreSpec::new(A),
+            ScoreSpec::new(B).disarmed_by(A).with_sticky(8),
+        ];
+        let mut state = EntityState::new();
+        let only_b = Key::bit(B);
+        assert_eq!(
+            eval_scores(&specs, &mut state, only_b, Pulse::new(0)),
+            only_b
+        );
+        let both = Key::from_ids([A, B]);
+        let in_play = eval_scores(&specs, &mut state, both, Pulse::new(1));
+        assert_eq!(in_play, Key::bit(A), "A in-play disarms B even with sticky");
     }
 }

@@ -14,7 +14,9 @@ Drools, OPS5, CLIPS, and every “when this metric crosses, do that” dashboard
 
 ## Decision
 
-`Lift` is a pure function: `(now, revision of the changed fact, mandate, config) -> Msg | Silence`.
+`Lift` is a pure function: `(now, revision of the changed fact, mandate, config) -> Silence | Msg | Batch`.
+
+One pulse may emit several `Msg`s (`Lifted::Batch`). The Executive applies them in order. Lift still does not `apply`. See [[docs/adr/0021-batch-lift-max-age-disarm-port-executive]].
 
 Do not clone the whole previous store. Other keys are read from `now`; the changed key’s prior payload is `revision.previous`. See [[docs/adr/0020-kernel-sits-beside-the-chart]].
 

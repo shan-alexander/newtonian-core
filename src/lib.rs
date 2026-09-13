@@ -76,6 +76,9 @@ mod machine_port;
 pub use belief::MemoryStore;
 pub use belief::{Belief, BeliefStore, Freshness, Justification};
 pub use exec::Executive;
+pub use exec::PortExecutive;
+#[cfg(feature = "alloc")]
+pub use exec::PulseOutcome;
 #[cfg(feature = "fold")]
 pub use fold::{Catalog, FoldError, KnobId, Knobs, Policy, Sleeve, KNOB_SLOTS};
 pub use gateway::{Admission, Gateway, OpenGateway};

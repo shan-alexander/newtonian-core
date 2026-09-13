@@ -24,7 +24,7 @@ A crate is defined as much by what it refuses as by what it ships.
 
 ## Still in scope later, not 0.0.0 claims
 
-- A default `exec` pulse (named at 0.0.0; implemented later).
+- A required `run()` / sockets in `exec`. `PortExecutive` is an optional no-I/O helper.
 - Per-key mandate bounds (one [`Mandate::freshness_bound`] for the whole mandate is the hook).
 
 ## Related

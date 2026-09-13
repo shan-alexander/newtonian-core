@@ -11,8 +11,10 @@ Each score has:
 
 - a raw predicate of beliefs (and maybe Newton config),
 - **enablement** — may be gated by a parent ([[docs/concepts/enablement-dag]]),
-- **stickiness / max age** — stays in-play while raw is false, on **its** clock,
-- disable rules.
+- **stickiness** — stays in-play while raw is false, on **its** clock,
+- **max_age** — cap on total in-play own-ticks (`0` = no cap),
+- **disarm_mask** — any of these already in-play score bits force off,
+- disable / enablement rules.
 
 Digital analogue: a latch with a gated clock. Trading analogue: `{tf, bars}` arm. Game analogue: “LowHp for 12 frames after the spike.” Robot analogue: “target lost, hold 200 ms.”
 
@@ -21,5 +23,7 @@ A 5 s pulse must not age a 1 m score as one tick. A 10 ms vision frame must not 
 ## Related
 
 - [[docs/adr/0019-gated-hysteretic-scores-are-not-harel-history]]
+- [[docs/adr/0021-batch-lift-max-age-disarm-port-executive]]
 - [[docs/edge_cases/sticky-is-not-harel-history]]
 - [[docs/concepts/policy-kernel]]
+- symbol:ScoreSpec

@@ -6,7 +6,7 @@ node_type: concept
 
 The only door from beliefs to the chart.
 
-`(now, revision of the changed fact, mandate, config) -> Msg | Silence`
+`(now, revision of the changed fact, mandate, config) -> Silence | Msg | Batch`
 
 Do not clone the previous store. Other keys are read from `now`. See [[docs/adr/0020-kernel-sits-beside-the-chart]].
 
